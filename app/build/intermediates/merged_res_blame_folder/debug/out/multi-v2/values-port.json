@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "jp.masatonasu.wakemusic.app-mergeDebugResources-30:/values-port/values-port.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\mazz2\\.gradle\\caches\\transforms-3\\4b7a61d8e628112342da0be7ca9bdeeb\\transformed\\appcompat-1.7.0\\res\\values-port\\values-port.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "55",
+                        "endOffsets": "106"
+                    }
+                }
+            ]
+        }
+    ]
+}
