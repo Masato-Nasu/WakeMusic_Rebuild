@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">WakeMusic</string>
+    <string name="choose_folder">音楽フォルダを選ぶ</string>
+    <string name="scan">スキャン</string>
+    <string name="add_alarm">アラームを追加</string>
+    <string name="test_play">テスト再生</string>
+    <string name="stop">停止</string>
+    <string name="permission_needed">権限が必要です</string>
+</resources>
