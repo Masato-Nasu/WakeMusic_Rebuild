@@ -22,7 +22,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:text="状態: 未設定" />
+            android:text="音楽フォルダ: 未設定" />
 
         <Button
             android:id="@+id/btnChooseFolder"
@@ -31,11 +31,7 @@
             android:layout_marginTop="14dp"
             android:text="@string/choose_folder" />
 
-        <Button
-            android:id="@+id/btnScan"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/scan" />
+        <!-- スキャンは自動で行うためUIからは隠す（必要なら将来メニューへ） -->
 
         <TextView
             android:id="@+id/tvVolume"
@@ -65,25 +61,23 @@
             android:layout_marginTop="10dp"
             android:nestedScrollingEnabled="false" />
 
+        <!-- テスト再生/停止/デバッグは普段は不要なのでUIからは隠す -->
+
         <Button
-            android:id="@+id/btnTestPlay"
+            android:id="@+id/btnOverlayPermission"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="@string/test_play" />
-
-        <Button
-            android:id="@+id/btnStop"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/stop" />
+            android:text="停止ボタンを画面上に出す（任意）"
+            android:visibility="gone" />
 
         <TextView
-            android:id="@+id/tvDebug"
+            android:id="@+id/tvOverlayHint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:text="※許可すると、アラーム中に画面右上へ小さな停止ボタンを表示できます"
+            android:visibility="gone" />
 
     </LinearLayout>
 </ScrollView>
