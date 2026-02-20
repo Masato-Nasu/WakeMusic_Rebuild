@@ -1,0 +1,8 @@
+app-release*.apk
+WakeMusic_*.apk
+app/build/
+.gradle/
+.idea/
+local.properties
+*.jks
+keystores/
