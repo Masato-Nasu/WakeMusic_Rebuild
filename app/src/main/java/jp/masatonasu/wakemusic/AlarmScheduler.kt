@@ -62,6 +62,7 @@ object AlarmScheduler {
         return PendingIntent.getBroadcast(context, alarmId.toInt(), i, flags)
     }
 
+    /** 次回発火時刻（weekdaysOnly=true の場合は土日をスキップ） */
     fun nextOccurrenceMillis(alarm: AlarmItem): Long {
         val now = java.util.Calendar.getInstance()
         val cal = java.util.Calendar.getInstance().apply {
@@ -70,9 +71,22 @@ object AlarmScheduler {
             set(java.util.Calendar.HOUR_OF_DAY, alarm.hour)
             set(java.util.Calendar.MINUTE, alarm.minute)
         }
+
+        // 未来になるまで進める
         if (cal.timeInMillis <= now.timeInMillis) {
             cal.add(java.util.Calendar.DAY_OF_YEAR, 1)
         }
+
+        // 平日のみ設定なら、土日をスキップ
+        if (alarm.weekdaysOnly) {
+            while (true) {
+                val dow = cal.get(java.util.Calendar.DAY_OF_WEEK)
+                val isWeekend = (dow == java.util.Calendar.SATURDAY || dow == java.util.Calendar.SUNDAY)
+                if (!isWeekend) break
+                cal.add(java.util.Calendar.DAY_OF_YEAR, 1)
+            }
+        }
+
         return cal.timeInMillis
     }
 }

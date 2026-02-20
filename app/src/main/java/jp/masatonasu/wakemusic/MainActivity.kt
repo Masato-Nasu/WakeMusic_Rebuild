@@ -70,22 +70,33 @@ class MainActivity : AppCompatActivity() {
         volumeControlStream = AudioManager.STREAM_ALARM
 
         ensureNotificationPermissionIfNeeded()
-
         adapter = AlarmListAdapter(
-            onToggle = { item, enabled ->
-                val updated = item.copy(enabled = enabled)
+            items = emptyList(),
+            onTimeClick = { /* いまは時刻編集はしない */ },
+            onToggleEnabled = { alarm, enabled ->
+                val updated = alarm.copy(enabled = enabled)
                 updateAlarm(updated)
-                if (enabled) AlarmScheduler.schedule(this, updated) else AlarmScheduler.cancel(this, updated.id)
-                refreshUi("切替")
+                // 設定変更時は既存の予約を潰してから再予約しておくと確実
+                AlarmScheduler.cancel(this, updated.id)
+                if (updated.enabled) {
+                    AlarmScheduler.schedule(this, updated)
+                }
             },
-            onDelete = { item ->
-                AlarmScheduler.cancel(this, item.id)
-                deleteAlarm(item.id)
+            onToggleWeekdaysOnly = { alarm, weekdaysOnly ->
+                val updated = alarm.copy(weekdaysOnly = weekdaysOnly)
+                updateAlarm(updated)
+                // 平日のみ切替も次回予約が変わるので、再予約
+                if (updated.enabled) {
+                    AlarmScheduler.cancel(this, updated.id)
+                    AlarmScheduler.schedule(this, updated)
+                }
+            },
+            onDelete = { alarm ->
+                AlarmScheduler.cancel(this, alarm.id)
+                deleteAlarm(alarm)
                 refreshUi("削除")
             }
         )
-
-        binding.rvAlarms.layoutManager = LinearLayoutManager(this)
         binding.rvAlarms.adapter = adapter
 
         binding.btnChooseFolder.setOnClickListener {
@@ -168,7 +179,10 @@ class MainActivity : AppCompatActivity() {
         val existingIdx = list.indexOfFirst { it.hour == item.hour && it.minute == item.minute }
         val effective = if (existingIdx >= 0) {
             val existing = list[existingIdx]
-            val updated = existing.copy(enabled = item.enabled)
+            val updated = existing.copy(
+                enabled = item.enabled,
+                weekdaysOnly = if (existing.id == item.id) item.weekdaysOnly else existing.weekdaysOnly,
+            )
             list[existingIdx] = updated
             updated
         } else {
@@ -179,13 +193,19 @@ class MainActivity : AppCompatActivity() {
         return effective
     }
 
-    private fun updateAlarm(item: AlarmItem) {
+    private fun updateAlarm(item: AlarmItem): AlarmItem {
         val list = AlarmStore.loadAlarms(this).toMutableList()
         val idx = list.indexOfFirst { it.id == item.id }
         if (idx >= 0) {
             list[idx] = item
-            AlarmStore.saveAlarms(this, list)
+        } else {
+            // 万一（データ移行などで）見つからない場合は追加
+            list.add(item)
         }
+        val sorted = list.sortedWith(compareBy({ it.hour }, { it.minute }, { it.id }))
+        AlarmStore.saveAlarms(this, sorted)
+        refreshUi("保存")
+        return item
     }
 
     private fun deleteAlarm(id: Long) {

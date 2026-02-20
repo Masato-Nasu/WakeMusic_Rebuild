@@ -3,29 +3,37 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:padding="14dp"
-    android:gravity="center_vertical">
+    android:gravity="center_vertical"
+    android:padding="12dp">
 
     <TextView
         android:id="@+id/tvTime"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="07:00"
-        android:textSize="18sp" />
+        android:text="07:30"
+        android:textSize="22sp"
+        android:textStyle="bold" />
 
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/swEnabled"
+    <CheckBox
+        android:id="@+id/cbWeekdaysOnly"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:checked="true" />
+        android:layout_marginEnd="10dp"
+        android:text="平日のみ"
+        android:textSize="12sp" />
+
+    <Switch
+        android:id="@+id/swEnabled"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
 
     <ImageButton
         android:id="@+id/btnDelete"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:layout_marginStart="10dp"
         android:background="@android:color/transparent"
-        android:contentDescription="delete"
+        android:contentDescription="Delete"
         android:src="@android:drawable/ic_menu_delete" />
+
 </LinearLayout>

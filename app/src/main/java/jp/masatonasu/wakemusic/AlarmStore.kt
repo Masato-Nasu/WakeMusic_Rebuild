@@ -46,7 +46,9 @@ object AlarmStore {
     }
 
     /**
-     * alarms encoding: id|hour|minute|enabled, id|hour|minute|enabled, ...
+     * alarms encoding:
+     *   id|hour|minute|enabled|weekdaysOnly , id|hour|minute|enabled|weekdaysOnly , ...
+     * 互換性: 旧形式(id|hour|minute|enabled)も読み込めます（weekdaysOnly=false 扱い）
      */
     fun loadAlarms(context: Context): List<AlarmItem> {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -66,12 +68,15 @@ object AlarmStore {
                 val hour = p[1].toIntOrNull() ?: return@forEach
                 val minute = p[2].toIntOrNull() ?: return@forEach
                 val enabled = p[3].toBooleanStrictOrNull() ?: true
+                val weekdaysOnly = if (p.size >= 5) (p[4].toBooleanStrictOrNull() ?: false) else false
+
                 list.add(
                     AlarmItem(
                         id = id,
                         hour = hour.coerceIn(0, 23),
                         minute = minute.coerceIn(0, 59),
-                        enabled = enabled
+                        enabled = enabled,
+                        weekdaysOnly = weekdaysOnly,
                     )
                 )
             }
@@ -81,7 +86,7 @@ object AlarmStore {
 
     fun saveAlarms(context: Context, alarms: List<AlarmItem>) {
         val encoded = alarms.joinToString(",") { a ->
-            "${a.id}|${a.hour}|${a.minute}|${a.enabled}"
+            "${a.id}|${a.hour}|${a.minute}|${a.enabled}|${a.weekdaysOnly}"
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit(commit = true) {
             putString(KEY_ALARMS, encoded)

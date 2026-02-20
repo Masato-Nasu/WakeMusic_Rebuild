@@ -3,21 +3,22 @@ package jp.masatonasu.wakemusic
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.ImageButton
+import android.widget.Switch
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.switchmaterial.SwitchMaterial
 
 class AlarmListAdapter(
-    private val onToggle: (AlarmItem, Boolean) -> Unit,
+    private var items: List<AlarmItem>,
+    private val onTimeClick: (AlarmItem) -> Unit,
+    private val onToggleEnabled: (AlarmItem, Boolean) -> Unit,
+    private val onToggleWeekdaysOnly: (AlarmItem, Boolean) -> Unit,
     private val onDelete: (AlarmItem) -> Unit,
 ) : RecyclerView.Adapter<AlarmListAdapter.VH>() {
 
-    private val items: MutableList<AlarmItem> = mutableListOf()
-
-    fun submitList(list: List<AlarmItem>) {
-        items.clear()
-        items.addAll(list.sortedWith(compareBy({ it.hour }, { it.minute }, { it.id })))
+    fun submitList(newItems: List<AlarmItem>) {
+        items = newItems
         notifyDataSetChanged()
     }
 
@@ -26,27 +27,32 @@ class AlarmListAdapter(
         return VH(v)
     }
 
-    override fun onBindViewHolder(holder: VH, position: Int) {
-        holder.bind(items[position])
-    }
-
     override fun getItemCount(): Int = items.size
 
-    inner class VH(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val tvTime: TextView = itemView.findViewById(R.id.tvTime)
-        private val sw: SwitchMaterial = itemView.findViewById(R.id.swEnabled)
-        private val btnDelete: ImageButton = itemView.findViewById(R.id.btnDelete)
+    override fun onBindViewHolder(holder: VH, position: Int) {
+        val item = items[position]
+        holder.tvTime.text = item.formatTime()
 
-        fun bind(item: AlarmItem) {
-            tvTime.text = item.formatTime()
-
-            sw.setOnCheckedChangeListener(null)
-            sw.isChecked = item.enabled
-            sw.setOnCheckedChangeListener { _, checked ->
-                onToggle(item, checked)
-            }
-
-            btnDelete.setOnClickListener { onDelete(item) }
+        holder.swEnabled.setOnCheckedChangeListener(null)
+        holder.swEnabled.isChecked = item.enabled
+        holder.swEnabled.setOnCheckedChangeListener { _, isChecked ->
+            onToggleEnabled(item, isChecked)
         }
+
+        holder.cbWeekdaysOnly.setOnCheckedChangeListener(null)
+        holder.cbWeekdaysOnly.isChecked = item.weekdaysOnly
+        holder.cbWeekdaysOnly.setOnCheckedChangeListener { _, isChecked ->
+            onToggleWeekdaysOnly(item, isChecked)
+        }
+
+        holder.tvTime.setOnClickListener { onTimeClick(item) }
+        holder.btnDelete.setOnClickListener { onDelete(item) }
+    }
+
+    class VH(v: View) : RecyclerView.ViewHolder(v) {
+        val tvTime: TextView = v.findViewById(R.id.tvTime)
+        val cbWeekdaysOnly: CheckBox = v.findViewById(R.id.cbWeekdaysOnly)
+        val swEnabled: Switch = v.findViewById(R.id.swEnabled)
+        val btnDelete: ImageButton = v.findViewById(R.id.btnDelete)
     }
 }
