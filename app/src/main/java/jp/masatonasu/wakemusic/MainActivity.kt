@@ -8,8 +8,10 @@ import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -90,28 +92,21 @@ class MainActivity : AppCompatActivity() {
             pickFolder.launch(null)
         }
 
-        binding.btnScan.setOnClickListener {
-            scanFolderAndCache()
-        }
-
         binding.btnAddAlarm.setOnClickListener {
             showTimePickerAddAlarm()
         }
 
-        binding.btnTestPlay.setOnClickListener {
-            val i = Intent(this, AlarmPlayerService::class.java).apply {
-                action = AlarmPlayerService.ACTION_START
-                putExtra(AlarmPlayerService.EXTRA_SOURCE, "test")
-            }
-            ContextCompat.startForegroundService(this, i)
+
+        // タイトル長押しで「ツール（テスト/停止/スキャン）」を開く（普段のUIはシンプルに）
+        binding.tvTitle.setOnLongClickListener {
+            showToolsDialog()
+            true
         }
 
-        binding.btnStop.setOnClickListener {
-            val i = Intent(this, AlarmPlayerService::class.java).apply {
-                action = AlarmPlayerService.ACTION_STOP
-            }
-            startService(i)
+        binding.btnOverlayPermission.setOnClickListener {
+            openOverlayPermissionSettings()
         }
+        updateOverlayHint()
 
         val initPercent = AlarmStore.getAlarmVolumePercent(this)
         binding.seekVolume.progress = initPercent
@@ -136,6 +131,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshUi("resume")
+        updateOverlayHint()
     }
 
     private fun ensureNotificationPermissionIfNeeded() {
@@ -231,16 +227,7 @@ class MainActivity : AppCompatActivity() {
         val alarms = AlarmStore.loadAlarms(this)
         adapter.submitList(alarms)
 
-        binding.tvStatus.text = "状態: フォルダ=$folderName / 曲=$cacheCount / アラーム=${alarms.size}"
-
-        val sb = StringBuilder()
-        sb.append("debug:").append("\n")
-        sb.append("reason=").append(reason).append("\n")
-        sb.append("treeUri=").append(tree?.toString() ?: "null").append("\n")
-        sb.append("cacheCount=").append(cacheCount).append("\n")
-        sb.append("alarms=").append(alarms.joinToString { it.formatTime() + if (it.enabled) "" else "(OFF)" }).append("\n")
-
-        binding.tvDebug.text = sb.toString()
+        binding.tvStatus.text = "音楽フォルダ: $folderName\n曲数: $cacheCount / アラーム: ${alarms.size}"
     }
 
     private fun applyAlarmStreamPercent(percent: Int, showUi: Boolean) {
@@ -249,4 +236,58 @@ class MainActivity : AppCompatActivity() {
         val flags = if (showUi) AudioManager.FLAG_SHOW_UI else 0
         runCatching { audioManager.setStreamVolume(AudioManager.STREAM_ALARM, target, flags) }
     }
+
+
+    private fun openOverlayPermissionSettings() {
+        val uri = Uri.parse("package:$packageName")
+        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, uri)
+        runCatching { startActivity(intent) }
+    }
+
+    private fun updateOverlayHint() {
+        val allowed = StopOverlay.canUse(this)
+
+        // 許可済みならUIからは消して「余計なもの」を見せない
+        if (allowed) {
+            binding.btnOverlayPermission.visibility = android.view.View.GONE
+            binding.tvOverlayHint.visibility = android.view.View.GONE
+        } else {
+            binding.btnOverlayPermission.visibility = android.view.View.VISIBLE
+            binding.tvOverlayHint.visibility = android.view.View.VISIBLE
+            binding.tvOverlayHint.text = "未許可：停止ボタンを画面上に出すには、許可が必要です"
+        }
+    }
+
+    private fun showToolsDialog() {
+        val items = arrayOf(
+            "テスト再生",
+            "停止",
+            "曲一覧を更新（スキャン）",
+            "停止ボタン（オーバーレイ）設定を開く"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("WakeMusic ツール")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> {
+                        val i = Intent(this, AlarmPlayerService::class.java).apply {
+                            action = AlarmPlayerService.ACTION_START
+                            putExtra(AlarmPlayerService.EXTRA_SOURCE, "test")
+                        }
+                        ContextCompat.startForegroundService(this, i)
+                    }
+                    1 -> {
+                        val i = Intent(this, AlarmPlayerService::class.java).apply {
+                            action = AlarmPlayerService.ACTION_STOP
+                        }
+                        startService(i)
+                    }
+                    2 -> scanFolderAndCache()
+                    3 -> openOverlayPermissionSettings()
+                }
+            }
+            .setNegativeButton("閉じる", null)
+            .show()
+    }
+
 }

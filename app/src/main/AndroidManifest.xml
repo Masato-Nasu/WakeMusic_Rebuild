@@ -4,6 +4,12 @@
     <!-- Android 13+ notifications (required for foreground service notification) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Android 14+ full-screen notifications (OEM/OS may still require user approval) -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <!-- Optional: show a small STOP button overlay while alarm is ringing (user must grant permission) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <!-- Alarm scheduling / boot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />

@@ -34,7 +34,7 @@ class AlarmPlayerService : Service() {
     override fun onCreate() {
         super.onCreate()
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        NotificationHelper.ensureChannel(this)
+        NotificationHelper.ensureChannels(this)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -75,7 +75,13 @@ class AlarmPlayerService : Service() {
         NowPlaying.isPlaying.set(true)
         NowPlaying.title = "WakeMusic"
 
-        startForegroundCompat(buildNotification("再生準備中…"))
+        // 1) Foreground service notification (silent / low importance)
+        startForegroundCompat(buildPlaybackNotification("再生準備中…"))
+
+        // 2) Alarm-start control notification (high importance) with Stop button
+        postOrUpdateAlarmNotification("再生準備中…")
+
+        // 3) Try to bring the stop UI to front (may be restricted by OEM/OS)
         showRingingUi()
         playCurrent()
     }
@@ -108,7 +114,7 @@ class AlarmPlayerService : Service() {
         NowPlaying.title = title
         NowPlaying.isPlaying.set(true)
         sendNowPlayingBroadcast(title, true)
-        updateNotification(title)
+        updateNotifications(title)
 
         releasePlayer()
         val mp = MediaPlayer()
@@ -204,6 +210,8 @@ class AlarmPlayerService : Service() {
         releasePlayer()
         abandonAudioFocus()
         releaseWakeLock()
+        cancelAlarmNotification()
+        StopOverlay.hide(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
@@ -225,21 +233,39 @@ class AlarmPlayerService : Service() {
     private fun startForegroundCompat(notification: android.app.Notification) {
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(
-                NOTIF_ID,
+                NOTIF_PLAYBACK_ID,
                 notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
             )
         } else {
-            startForeground(NOTIF_ID, notification)
+            startForeground(NOTIF_PLAYBACK_ID, notification)
         }
     }
 
-    private fun updateNotification(title: String) {
+    private fun updateNotifications(title: String) {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-        nm.notify(NOTIF_ID, buildNotification(title))
+        nm.notify(NOTIF_PLAYBACK_ID, buildPlaybackNotification(title))
+        nm.notify(NOTIF_ALARM_ID, buildAlarmNotification(title))
+
+        // Optional: show a small overlay STOP button if the user has granted permission.
+        if (NowPlaying.isPlaying.get()) {
+            StopOverlay.show(this)
+        } else {
+            StopOverlay.hide(this)
+        }
     }
 
-    private fun buildNotification(title: String): android.app.Notification {
+    private fun postOrUpdateAlarmNotification(title: String) {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        nm.notify(NOTIF_ALARM_ID, buildAlarmNotification(title))
+    }
+
+    private fun cancelAlarmNotification() {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        runCatching { nm.cancel(NOTIF_ALARM_ID) }
+    }
+
+    private fun buildPlaybackNotification(title: String): android.app.Notification {
         val openIntent = Intent(this, RingingActivity::class.java)
         val stopIntent = Intent(this, AlarmPlayerService::class.java).apply { action = ACTION_STOP }
 
@@ -249,13 +275,43 @@ class AlarmPlayerService : Service() {
         val openPi = PendingIntent.getActivity(this, 2001, openIntent, flags)
         val stopPi = PendingIntent.getService(this, 2002, stopIntent, flags)
 
-        return NotificationCompat.Builder(this, NOTIF_CHANNEL_ID)
+        return NotificationCompat.Builder(this, NotificationHelper.CHANNEL_PLAYBACK_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("WakeMusic")
             .setContentText(title)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(openPi)
+            .addAction(android.R.drawable.ic_media_pause, getString(R.string.stop), stopPi)
+            .build()
+    }
+
+    private fun buildAlarmNotification(title: String): android.app.Notification {
+        val openIntent = Intent(this, RingingActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        val stopIntent = Intent(this, AlarmPlayerService::class.java).apply { action = ACTION_STOP }
+
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+
+        val openPi = PendingIntent.getActivity(this, 2101, openIntent, flags)
+        val stopPi = PendingIntent.getService(this, 2102, stopIntent, flags)
+
+        // Full-screen intent: OEM/OS may restrict, but even when blocked, this notification + Stop button remains.
+        return NotificationCompat.Builder(this, NotificationHelper.CHANNEL_ALARM_ID)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle("WakeMusic")
+            .setContentText(title)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setContentIntent(openPi)
+            .setFullScreenIntent(openPi, true)
             .addAction(android.R.drawable.ic_media_pause, getString(R.string.stop), stopPi)
             .build()
     }
@@ -337,7 +393,7 @@ class AlarmPlayerService : Service() {
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_PLAYING = "extra_playing"
 
-        const val NOTIF_CHANNEL_ID = "wakemusic_alarm"
-        const val NOTIF_ID = 1001
+        const val NOTIF_PLAYBACK_ID = 1001
+        const val NOTIF_ALARM_ID = 1002
     }
 }
