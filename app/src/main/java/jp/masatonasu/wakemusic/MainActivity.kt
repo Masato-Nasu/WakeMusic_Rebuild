@@ -93,10 +93,11 @@ class MainActivity : AppCompatActivity() {
             },
             onDelete = { alarm ->
                 AlarmScheduler.cancel(this, alarm.id)
-                deleteAlarm(alarm)
+                deleteAlarm(alarm.id)
                 refreshUi("削除")
             }
         )
+        binding.rvAlarms.layoutManager = LinearLayoutManager(this)
         binding.rvAlarms.adapter = adapter
 
         binding.btnChooseFolder.setOnClickListener {
